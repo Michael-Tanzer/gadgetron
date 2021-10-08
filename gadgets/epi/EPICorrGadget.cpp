@@ -112,7 +112,6 @@ namespace Gadgetron {
             unprocessed_data.emplace_back(m1,m2);
             if (corrComputed_) {
 
-
                 for (auto data : unprocessed_data) {
 
                     arma::cx_fmat adata = as_arma_matrix(*data.second->getObjectPtr());
@@ -128,10 +127,7 @@ namespace Gadgetron {
                 unprocessed_data.clear();
             }
 
-
         }
-
-
 
         return 0;
     }
@@ -152,7 +148,7 @@ namespace Gadgetron {
             }
 
         // Apply the correction
-// We use the armadillo notation that loops over all the columns
+        // We use the armadillo notation that loops over all the columns
         if (hdr.isFlagSet(ISMRMRD::ISMRMRD_ACQ_IS_REVERSE)) {
                 // Negative readout
                 for (int p = 0; p < adata.n_cols; p++) {

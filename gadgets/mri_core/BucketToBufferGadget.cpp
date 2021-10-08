@@ -2,8 +2,9 @@
 #include "hoNDArray_elemwise.h"
 #include "hoNDArray_reductions.h"
 #include "mri_core_data.h"
+#include <ImageIOAnalyze.h>
 #include <boost/algorithm/string.hpp>
-
+#include <mri_core_utility.h>
 
 using BufferKey =  Gadgetron::BucketToBufferGadget::BufferKey;
 
@@ -45,6 +46,25 @@ namespace Gadgetron {
 
     void BucketToBufferGadget::process(Core::InputChannel<AcquisitionBucket>& input, Core::OutputChannel& out) {
 
+        if (!debug_folder.empty()){
+            Gadgetron::get_debug_folder_path(debug_folder, debug_folder_full_path_);
+            GDEBUG_CONDITION_STREAM(verbose, "Debug folder is " << debug_folder_full_path_);
+
+            // Create debug folder if necessary
+            boost::filesystem::path boost_folder_path(debug_folder_full_path_);
+            try
+            {
+                boost::filesystem::create_directories(boost_folder_path);
+            }
+            catch (...)
+            {
+                GERROR("Error creating the debug folder.\n");
+            }
+        } else {
+            GDEBUG_CONDITION_STREAM(verbose, "Debug folder is not set ... ");
+        }
+
+        int i = 1;
         for (auto acq_bucket : input) {
             std::map<BufferKey, IsmrmrdReconData> recon_data_buffers;
             GDEBUG_STREAM("BUCKET_SIZE " << acq_bucket.data_.size() << " ESPACE " << acq_bucket.refstats_.size());
@@ -63,6 +83,24 @@ namespace Gadgetron {
                 }
 
                 add_acquisition(*rbit.ref_, acq, header.encoding[espace], acq_bucket.refstats_[espace], true);
+
+                // Stuff the data, header and trajectory into this data buffer
+            }
+
+            for (auto& acq : acq_bucket.sms_ref_) {
+                // Get a reference to the header for this acquisition
+
+                const auto& acqhdr    = std::get<ISMRMRD::AcquisitionHeader>(acq);
+                auto key              = getKey(acqhdr.idx);
+                uint16_t espace       = acqhdr.encoding_space_ref;
+                IsmrmrdReconBit& rbit = getRBit(recon_data_buffers, key, espace);
+                if (!rbit.sms_ref_) {
+                    rbit.sms_ref_ = makeDataBuffer(acqhdr, header.encoding[espace], acq_bucket.smsrefstats_[espace], true);
+                    rbit.sms_ref_->sampling_ = createSamplingDescription(
+                        header.encoding[espace], acq_bucket.smsrefstats_[espace], acqhdr, true);
+                }
+
+                add_acquisition(*rbit.sms_ref_, acq, header.encoding[espace], acq_bucket.smsrefstats_[espace], true);
 
                 // Stuff the data, header and trajectory into this data buffer
             }
@@ -88,12 +126,26 @@ namespace Gadgetron {
 
             // Send all the ReconData messages
             GDEBUG("End of bucket reached, sending out %d ReconData buffers\n", recon_data_buffers.size());
-
             for (auto& recon_data_buffer : recon_data_buffers) {
-                if (acq_bucket.waveform_.empty())
+                if (!debug_folder_full_path_.empty()) {
+                    std::stringstream os_data;
+                    os_data << debug_folder_full_path_
+                       << "out_btb_data_"
+                       << i;
+
+                    std::stringstream os_sms_ref;
+                    os_sms_ref << debug_folder_full_path_
+                            << "out_btb_smsref_"
+                            << i;
+                    gt_exporter_.export_array_complex_real_imag(recon_data_buffer.second.rbit_[0].data_.data_, os_data.str());
+                    gt_exporter_.export_array_complex_real_imag(recon_data_buffer.second.rbit_[0].sms_ref_->data_, os_sms_ref.str());
+                    i++;
+                }
+                if (acq_bucket.waveform_.empty()) {
                     out.push(recon_data_buffer.second);
-                else
+                } else {
                     out.push(recon_data_buffer.second, acq_bucket.waveform_);
+                }
             }
         }
     }

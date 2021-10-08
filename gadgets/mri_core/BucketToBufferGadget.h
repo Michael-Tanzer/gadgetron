@@ -5,6 +5,7 @@
 
 #include "mri_core_acquisition_bucket.h"
 #include "mri_core_data.h"
+#include <ImageIOAnalyze.h>
 #include <complex>
 #include <ismrmrd/ismrmrd.h>
 #include <ismrmrd/xml.h>
@@ -41,12 +42,16 @@ namespace Gadgetron {
         NODE_PROPERTY(split_slices, bool, "Split slices", false);
         NODE_PROPERTY(ignore_segment, bool, "Ignore segment", false);
         NODE_PROPERTY(verbose, bool, "Whether to print more information", false);
+        NODE_PROPERTY(debug_folder, std::string, "If set, the debug output will be written out", "");
+
 
         ISMRMRD::IsmrmrdHeader header;
 
+        std::string debug_folder_full_path_;
+        Gadgetron::ImageIOAnalyze gt_exporter_;
+
         void process(Core::InputChannel<AcquisitionBucket>& in, Core::OutputChannel& out) override;
         BufferKey getKey(const ISMRMRD::EncodingCounters& idx) const;
-
 
         IsmrmrdDataBuffered makeDataBuffer(const ISMRMRD::AcquisitionHeader& acqhdr, ISMRMRD::Encoding encoding,
             const AcquisitionBucketStats& stats, bool forref) const;

@@ -53,8 +53,10 @@ namespace Gadgetron
   struct AcquisitionBucket {
     std::vector< Core::Acquisition > data_;
     std::vector< Core::Acquisition > ref_;
+    std::vector< Core::Acquisition > sms_ref_;
     std::vector<AcquisitionBucketStats> datastats_;
     std::vector<AcquisitionBucketStats> refstats_;
+    std::vector<AcquisitionBucketStats> smsrefstats_;
     std::vector< Core::Waveform > waveform_;
 
 
@@ -70,8 +72,18 @@ namespace Gadgetron
               }
               refstats_[espace].add_stats(head);
           }
+
+          if (ISMRMRD::FlagBit(30).isSet(head.flags)){  // (head.flags & (1 << 29)) > 0)
+              sms_ref_.push_back(acq);
+              if (smsrefstats_.size() < (espace + 1)) {
+                  smsrefstats_.resize(espace + 1);
+              }
+              smsrefstats_[espace].add_stats(head);
+          }
+
           if (!(ISMRMRD::FlagBit(ISMRMRD::ISMRMRD_ACQ_IS_PARALLEL_CALIBRATION).isSet(head.flags)
-              || ISMRMRD::FlagBit(ISMRMRD::ISMRMRD_ACQ_IS_PHASECORR_DATA).isSet(head.flags))) {
+              || ISMRMRD::FlagBit(ISMRMRD::ISMRMRD_ACQ_IS_PHASECORR_DATA).isSet(head.flags)
+                || ISMRMRD::FlagBit(30).isSet(head.flags))) {
               if (datastats_.size() < (espace + 1)) {
                   datastats_.resize(espace + 1);
               }

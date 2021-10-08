@@ -17,7 +17,8 @@ set(gadgetron_python_gadgets_files
 		legacy/gadgets/passthrough_array_image.py
 		legacy/gadgets/pseudoreplicagather.py
 		legacy/gadgets/remove_2x_oversampling.py
-		legacy/gadgets/rms_coil_combine.py)
+		legacy/gadgets/rms_coil_combine.py
+		inter_gadget.py)
 
 source_group(config FILES ${gadgetron_python_config_files})
 source_group(gadgets FILES ${gadgetron_python_gadgets_files})

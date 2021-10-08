@@ -1,5 +1,6 @@
 
-#include "GenericReconCartesianGrappaGadget.h"
+#include "CustomGenericReconCartesianGrappaGadget.h"
+#include "custom_mri_core_grappa.h"
 #include "mri_core_grappa.h"
 #include "hoNDArray_reductions.h"
 
@@ -15,14 +16,15 @@
 
 namespace Gadgetron {
 
-    GenericReconCartesianGrappaGadget::GenericReconCartesianGrappaGadget() : BaseClass() {
+    CustomGenericReconCartesianGrappaGadget::CustomGenericReconCartesianGrappaGadget() : BaseClass() {
     }
 
-    GenericReconCartesianGrappaGadget::~GenericReconCartesianGrappaGadget() {
+    CustomGenericReconCartesianGrappaGadget::~CustomGenericReconCartesianGrappaGadget() {
     }
 
-    int GenericReconCartesianGrappaGadget::process_config(ACE_Message_Block *mb) {
+    int CustomGenericReconCartesianGrappaGadget::process_config(ACE_Message_Block *mb) {
         GADGET_CHECK_RETURN(BaseClass::process_config(mb) == GADGET_OK, GADGET_FAIL);
+        GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  1\n");
 
         // -------------------------------------------------
 
@@ -46,11 +48,11 @@ namespace Gadgetron {
         return GADGET_OK;
     }
 
-    int GenericReconCartesianGrappaGadget::process(Gadgetron::GadgetContainerMessage<IsmrmrdReconData> *m1) {
-        if (perform_timing.value()) { gt_timer_local_.start("GenericReconCartesianGrappaGadget::process"); }
+    int CustomGenericReconCartesianGrappaGadget::process(Gadgetron::GadgetContainerMessage<IsmrmrdReconData> *m1) {
+        if (perform_timing.value()) { gt_timer_local_.start("CustomGenericReconCartesianGrappaGadget::process"); }
 
         process_called_times_++;
-        bool necessary_to_save = false;
+        GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  2\n");
 
         IsmrmrdReconData *recon_bit_ = m1->getObjectPtr();
         if (recon_bit_->rbit_.size() > num_encoding_spaces_) {
@@ -59,7 +61,7 @@ namespace Gadgetron {
                                                                                             << num_encoding_spaces_);
         }
 
-        GadgetContainerMessage<std::vector<Core::Waveform>>* wav = AsContainerMessage<std::vector<Core::Waveform>>(m1->cont());
+        GadgetContainerMessage< std::vector<ISMRMRD::Waveform> > * wav = AsContainerMessage< std::vector<ISMRMRD::Waveform>  >(m1->cont());
         if (wav)
         {
             if (verbose.value())
@@ -80,13 +82,14 @@ namespace Gadgetron {
 
             // ---------------------------------------------------------------
             // export incoming data
-
-            if (!debug_folder_full_path_.empty() && necessary_to_save) {
-                gt_exporter_.export_array_complex_real_imag(recon_bit_->rbit_[e].data_.data_,
+            GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  3\n");
+            GDEBUG_STREAM("FILEPATH" << debug_folder_full_path_ << "\n");
+            if (!debug_folder_full_path_.empty()) {
+                gt_exporter_.export_array_complex(recon_bit_->rbit_[e].data_.data_,
                                                   debug_folder_full_path_ + "data" + os.str());
             }
 
-            if (!debug_folder_full_path_.empty() && recon_bit_->rbit_[e].data_.trajectory_ && necessary_to_save) {
+            if (!debug_folder_full_path_.empty() && recon_bit_->rbit_[e].data_.trajectory_) {
                 if (recon_bit_->rbit_[e].ref_->trajectory_->get_number_of_elements() > 0) {
                     gt_exporter_.export_array(*(recon_bit_->rbit_[e].data_.trajectory_),
                                               debug_folder_full_path_ + "data_traj" + os.str());
@@ -96,12 +99,13 @@ namespace Gadgetron {
             // ---------------------------------------------------------------
 
             if (recon_bit_->rbit_[e].ref_) {
-                if (!debug_folder_full_path_.empty() && necessary_to_save) {
+                GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  4\n");
+                if (!debug_folder_full_path_.empty()) {
                     gt_exporter_.export_array_complex(recon_bit_->rbit_[e].ref_->data_,
                                                       debug_folder_full_path_ + "ref" + os.str());
                 }
 
-                if (!debug_folder_full_path_.empty() && recon_bit_->rbit_[e].ref_->trajectory_ && necessary_to_save) {
+                if (!debug_folder_full_path_.empty() && recon_bit_->rbit_[e].ref_->trajectory_) {
                     if (recon_bit_->rbit_[e].ref_->trajectory_->get_number_of_elements() > 0) {
                         gt_exporter_.export_array(*(recon_bit_->rbit_[e].ref_->trajectory_),
                                                   debug_folder_full_path_ + "ref_traj" + os.str());
@@ -112,19 +116,19 @@ namespace Gadgetron {
 
                 // after this step, the recon_obj_[e].ref_calib_ and recon_obj_[e].ref_coil_map_ are set
 
-                if (perform_timing.value()) { gt_timer_.start("GenericReconCartesianGrappaGadget::make_ref_coil_map"); }
+                if (perform_timing.value()) { gt_timer_.start("CustomGenericReconCartesianGrappaGadget::make_ref_coil_map"); }
                 this->make_ref_coil_map(*recon_bit_->rbit_[e].ref_, *recon_bit_->rbit_[e].data_.data_.get_dimensions(),
                                         recon_obj_[e].ref_calib_, recon_obj_[e].ref_coil_map_, e);
                 if (perform_timing.value()) { gt_timer_.stop(); }
 
                 // ----------------------------------------------------------
                 // export prepared ref for calibration and coil map
-                if (!debug_folder_full_path_.empty() && necessary_to_save) {
+                if (!debug_folder_full_path_.empty()) {
                     this->gt_exporter_.export_array_complex(recon_obj_[e].ref_calib_,
                                                             debug_folder_full_path_ + "ref_calib" + os.str());
                 }
 
-                if (!debug_folder_full_path_.empty() && necessary_to_save) {
+                if (!debug_folder_full_path_.empty()) {
                     this->gt_exporter_.export_array_complex(recon_obj_[e].ref_coil_map_,
                                                             debug_folder_full_path_ + "ref_coil_map" + os.str());
                 }
@@ -132,19 +136,19 @@ namespace Gadgetron {
                 // ---------------------------------------------------------------
                 // after this step, the recon_obj_[e].ref_calib_dst_ and recon_obj_[e].ref_coil_map_ are modified
                 if (perform_timing.value()) {
-                    gt_timer_.start("GenericReconCartesianGrappaGadget::prepare_down_stream_coil_compression_ref_data");
+                    gt_timer_.start("CustomGenericReconCartesianGrappaGadget::prepare_down_stream_coil_compression_ref_data");
                 }
                 this->prepare_down_stream_coil_compression_ref_data(recon_obj_[e].ref_calib_,
                                                                     recon_obj_[e].ref_coil_map_,
                                                                     recon_obj_[e].ref_calib_dst_, e);
                 if (perform_timing.value()) { gt_timer_.stop(); }
 
-                if (!debug_folder_full_path_.empty() && necessary_to_save) {
+                if (!debug_folder_full_path_.empty()) {
                     this->gt_exporter_.export_array_complex(recon_obj_[e].ref_calib_dst_,
                         debug_folder_full_path_ + "ref_calib_dst" + os.str());
                 }
 
-                if (!debug_folder_full_path_.empty() && necessary_to_save) {
+                if (!debug_folder_full_path_.empty()) {
                     this->gt_exporter_.export_array_complex(recon_obj_[e].ref_coil_map_,
                         debug_folder_full_path_ + "ref_coil_map_dst" + os.str());
                 }
@@ -153,7 +157,7 @@ namespace Gadgetron {
 
                 // after this step, coil map is computed and stored in recon_obj_[e].coil_map_
                 if (perform_timing.value()) {
-                    gt_timer_.start("GenericReconCartesianGrappaGadget::perform_coil_map_estimation");
+                    gt_timer_.start("CustomGenericReconCartesianGrappaGadget::perform_coil_map_estimation");
                 }
                 this->perform_coil_map_estimation(recon_obj_[e].ref_coil_map_, recon_obj_[e].coil_map_, e);
                 if (perform_timing.value()) { gt_timer_.stop(); }
@@ -162,7 +166,7 @@ namespace Gadgetron {
 
                 // after this step, recon_obj_[e].kernel_, recon_obj_[e].kernelIm_, recon_obj_[e].unmixing_coeff_ are filled
                 // gfactor is computed too
-                if (perform_timing.value()) { gt_timer_.start("GenericReconCartesianGrappaGadget::perform_calib"); }
+                if (perform_timing.value()) { gt_timer_.start("CustomGenericReconCartesianGrappaGadget::perform_calib"); }
                 this->perform_calib(recon_bit_->rbit_[e], recon_obj_[e], e);
                 if (perform_timing.value()) { gt_timer_.stop(); }
 
@@ -172,12 +176,13 @@ namespace Gadgetron {
             }
 
             if (recon_bit_->rbit_[e].data_.data_.get_number_of_elements() > 0) {
-                if (!debug_folder_full_path_.empty() && necessary_to_save) {
+                GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  5\n");
+                if (!debug_folder_full_path_.empty()) {
                     gt_exporter_.export_array_complex(recon_bit_->rbit_[e].data_.data_,
                                                       debug_folder_full_path_ + "data_before_unwrapping" + os.str());
                 }
 
-                if (!debug_folder_full_path_.empty() && recon_bit_->rbit_[e].data_.trajectory_ && necessary_to_save) {
+                if (!debug_folder_full_path_.empty() && recon_bit_->rbit_[e].data_.trajectory_) {
                     if (recon_bit_->rbit_[e].data_.trajectory_->get_number_of_elements() > 0) {
                         gt_exporter_.export_array(*(recon_bit_->rbit_[e].data_.trajectory_),
                                                   debug_folder_full_path_ + "data_before_unwrapping_traj" + os.str());
@@ -187,7 +192,7 @@ namespace Gadgetron {
                 // ---------------------------------------------------------------
 
                 if (perform_timing.value()) {
-                    gt_timer_.start("GenericReconCartesianGrappaGadget::perform_unwrapping");
+                    gt_timer_.start("CustomGenericReconCartesianGrappaGadget::perform_unwrapping");
                 }
                 this->perform_unwrapping(recon_bit_->rbit_[e], recon_obj_[e], e);
                 if (perform_timing.value()) { gt_timer_.stop(); }
@@ -195,15 +200,29 @@ namespace Gadgetron {
                 // ---------------------------------------------------------------
 
                 if (perform_timing.value()) {
-                    gt_timer_.start("GenericReconCartesianGrappaGadget::compute_image_header");
+                    gt_timer_.start("CustomGenericReconCartesianGrappaGadget::compute_image_header");
                 }
                 this->compute_image_header(recon_bit_->rbit_[e], recon_obj_[e].recon_res_, e);
                 if (perform_timing.value()) { gt_timer_.stop(); }
 
                 // ---------------------------------------------------------------
                 // pass down waveform
-                if (wav) recon_obj_[e].recon_res_.waveform_ =  this->set_wave_form_to_image_array(*wav->getObjectPtr());
+                if(wav) recon_obj_[e].recon_res_.waveform_ = *wav->getObjectPtr();
                 recon_obj_[e].recon_res_.acq_headers_ = recon_bit_->rbit_[e].data_.headers_;
+
+                // ---------------------------------------------------------------
+
+                if (!debug_folder_full_path_.empty()) {
+                    this->gt_exporter_.export_array_complex(recon_obj_[e].recon_res_.data_,
+                                                            debug_folder_full_path_ + "recon_res" + os.str());
+                }
+
+                if (perform_timing.value()) {
+                    gt_timer_.start("CustomGenericReconCartesianGrappaGadget::send_out_image_array");
+                }
+                this->send_out_image_array(recon_obj_[e].recon_res_, e,
+                                           image_series.value() + ((int) e + 1), GADGETRON_IMAGE_REGULAR);
+                if (perform_timing.value()) { gt_timer_.stop(); }
 
                 // ---------------------------------------------------------------
                 if (send_out_gfactor.value() && recon_obj_[e].gfactor_.get_number_of_elements() > 0 &&
@@ -214,7 +233,7 @@ namespace Gadgetron {
                     res.meta_ = recon_obj_[e].recon_res_.meta_;
 
                     if (perform_timing.value()) {
-                        gt_timer_.start("GenericReconCartesianGrappaGadget::send_out_image_array, gfactor");
+                        gt_timer_.start("CustomGenericReconCartesianGrappaGadget::send_out_image_array, gfactor");
                     }
                     this->send_out_image_array(res, e, image_series.value() + 10 * ((int) e + 2),
                                                GADGETRON_IMAGE_GFACTOR);
@@ -236,7 +255,7 @@ namespace Gadgetron {
                     }
 
                     if (snr_map.get_number_of_elements() > 0) {
-                        if (!debug_folder_full_path_.empty() && necessary_to_save) {
+                        if (!debug_folder_full_path_.empty()) {
                             this->gt_exporter_.export_array_complex(snr_map,
                                                                     debug_folder_full_path_ + "snr_map" + os.str());
                         }
@@ -255,20 +274,6 @@ namespace Gadgetron {
                         if (perform_timing.value()) { gt_timer_.stop(); }
                     }
                 }
-
-                // ---------------------------------------------------------------
-
-                if (!debug_folder_full_path_.empty()) {
-                    this->gt_exporter_.export_array_complex_real_imag(recon_obj_[e].recon_res_.data_,
-                        debug_folder_full_path_ + "recon_res" + os.str());
-                }
-
-                if (perform_timing.value()) {
-                    gt_timer_.start("GenericReconCartesianGrappaGadget::send_out_image_array");
-                }
-                this->send_out_image_array(recon_obj_[e].recon_res_, e,
-                    image_series.value() + ((int)e + 1), GADGETRON_IMAGE_REGULAR);
-                if (perform_timing.value()) { gt_timer_.stop(); }
             }
 
             recon_obj_[e].recon_res_.data_.clear();
@@ -280,11 +285,12 @@ namespace Gadgetron {
         m1->release();
 
         if (perform_timing.value()) { gt_timer_local_.stop(); }
+        GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  6\n");
 
         return GADGET_OK;
     }
 
-    void GenericReconCartesianGrappaGadget::prepare_down_stream_coil_compression_ref_data(
+    void CustomGenericReconCartesianGrappaGadget::prepare_down_stream_coil_compression_ref_data(
             const hoNDArray<std::complex<float> > &ref_src, hoNDArray<std::complex<float> > &ref_coil_map,
             hoNDArray<std::complex<float> > &ref_dst, size_t e) {
 
@@ -376,7 +382,7 @@ namespace Gadgetron {
     }
 
     void
-    GenericReconCartesianGrappaGadget::perform_calib(IsmrmrdReconBit &recon_bit, ReconObjType &recon_obj, size_t e) {
+    CustomGenericReconCartesianGrappaGadget::perform_calib(IsmrmrdReconBit &recon_bit, ReconObjType &recon_obj, size_t e) {
 
         size_t RO = recon_bit.data_.data_.get_size(0);
         size_t E1 = recon_bit.data_.data_.get_size(1);
@@ -412,13 +418,16 @@ namespace Gadgetron {
             size_t convKRO(1), convKE1(1), convKE2(1);
 
             bool fitItself = this->downstream_coil_compression.value();
+            GDEBUG_STREAM("DEBUGGING CUSTOM GRAPPA  ----------------------------  7" << fitItself << "\n");
 
             if (E2 > 1) {
+                GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  8\n");
                 std::vector<int> kE1, oE1;
                 std::vector<int> kE2, oE2;
                 grappa3d_kerPattern(kE1, oE1, kE2, oE2, convKRO, convKE1, convKE2, (size_t) acceFactorE1_[e],
                                     (size_t) acceFactorE2_[e], kRO, kNE1, kNE2, fitItself);
             } else {
+                GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  9\n");
                 std::vector<int> kE1, oE1;
                 Gadgetron::grappa2d_kerPattern(kE1, oE1, convKRO, convKE1, (size_t) acceFactorE1_[e], kRO, kNE1,
                                                fitItself);
@@ -454,11 +463,13 @@ namespace Gadgetron {
                 // -----------------------------------
 
                 if (E2 > 1) {
+                    GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  10\n");
                     hoNDArray<std::complex<float> > ker(convKRO, convKE1, convKE2, srcCHA, dstCHA,
                                                         &(recon_obj.kernel_(0, 0, 0, 0, 0, n, s, slc)));
 
                     if (fitItself)
                     {
+                        GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  11\n");
                         Gadgetron::grappa3d_calib_convolution_kernel(ref_src, ref_dst, (size_t)acceFactorE1_[e],
                             (size_t)acceFactorE2_[e], grappa_reg_lamda.value(),
                             grappa_calib_over_determine_ratio.value(), kRO, kNE1,
@@ -466,6 +477,7 @@ namespace Gadgetron {
                     }
                     else
                     {
+                        GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  12\n");
                         Gadgetron::grappa3d_calib_convolution_kernel(ref_src, ref_src, (size_t)acceFactorE1_[e],
                             (size_t)acceFactorE2_[e], grappa_reg_lamda.value(),
                             grappa_calib_over_determine_ratio.value(), kRO, kNE1,
@@ -495,6 +507,7 @@ namespace Gadgetron {
                     //    gt_exporter_.export_array(gFactor, debug_folder_full_path_ + "gFactor_3D_" + suffix);
                     //}
                 } else {
+                    GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  13\n");
                     hoNDArray<std::complex<float> > acsSrc(ref_RO, ref_E1, srcCHA,
                                                            const_cast< std::complex<float> *>(ref_src.begin()));
                     hoNDArray<std::complex<float> > acsDst(ref_RO, ref_E1, dstCHA,
@@ -507,11 +520,13 @@ namespace Gadgetron {
 
                     if (fitItself)
                     {
+                        GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  14\n");
                         Gadgetron::grappa2d_calib_convolution_kernel(acsSrc, acsDst, (size_t)acceFactorE1_[e],
                             grappa_reg_lamda.value(), kRO, kNE1, convKer);
                     }
                     else
                     {
+                        GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  15\n");
                         Gadgetron::grappa2d_calib_convolution_kernel(acsSrc, acsSrc, (size_t)acceFactorE1_[e],
                             grappa_reg_lamda.value(), kRO, kNE1, convKer);
                     }
@@ -526,7 +541,7 @@ namespace Gadgetron {
                     {
                         gt_exporter_.export_array_complex(kIm, debug_folder_full_path_ + "kIm_" + suffix);
                     }*/
-
+                    GDEBUG("DEBUGGING CUSTOM GRAPPA  ----------------------------  16\n");
                     hoNDArray<std::complex<float> > coilMap(RO, E1, dstCHA,
                                                             &(recon_obj.coil_map_(0, 0, 0, 0, n, s, slc)));
                     hoNDArray<std::complex<float> > unmixC(RO, E1, srcCHA,
@@ -546,6 +561,19 @@ namespace Gadgetron {
                     {
                         gt_exporter_.export_array(gFactor, debug_folder_full_path_ + "gFactor_" + suffix);
                     }*/
+
+                    // MINE -------------
+                    this->save_complex_array_to_file_3d(acsSrc, ref_RO, ref_E1, srcCHA, "/mnt/i/Data PhD/OneDrive - Imperial College London/PhD/In-house recon/saved_data/temp/grappa_acs_src_sms.txt");
+                    //Gadgetron::save_complex_array_to_file_3d(acsSrc, ref_RO, ref_E1, srcCHA,
+                    //    (std::string&)"/mnt/i/Data PhD/OneDrive - Imperial College London/PhD/In-house recon/saved_data/temp/grappa_acs_src_sms.txt");
+                    this->save_complex_array_to_file_3d(acsDst, ref_RO, ref_E1, srcCHA, "/mnt/i/Data PhD/OneDrive - Imperial College London/PhD/In-house recon/saved_data/temp/grappa_acs_dst_sms.txt");
+                    //Gadgetron::save_complex_array_to_file_3d(acsDst, ref_RO, ref_E1, srcCHA,
+                    //    (std::string&)"/mnt/i/Data PhD/OneDrive - Imperial College London/PhD/In-house recon/saved_data/temp/grappa_acs_dst_sms.txt");
+                    this->save_complex_array_to_file_3d(coilMap, RO, E1, dstCHA, "/mnt/i/Data PhD/OneDrive - Imperial College London/PhD/In-house recon/saved_data/temp/grappa_coil_map.txt");
+                    this->save_complex_array_to_file_3d(unmixC, RO, E1, srcCHA, "/mnt/i/Data PhD/OneDrive - Imperial College London/PhD/In-house recon/saved_data/temp/grappa_unmixing_coeff.txt");
+
+                    // MINE -------------
+
                 }
 
                 // -----------------------------------
@@ -554,10 +582,8 @@ namespace Gadgetron {
 
     }
 
-    void GenericReconCartesianGrappaGadget::perform_unwrapping(IsmrmrdReconBit &recon_bit, ReconObjType &recon_obj,
+    void CustomGenericReconCartesianGrappaGadget::perform_unwrapping(IsmrmrdReconBit &recon_bit, ReconObjType &recon_obj,
                                                                size_t e) {
-
-        typedef std::complex<float> T;
 
         typedef std::complex<float> T;
 
@@ -587,12 +613,12 @@ namespace Gadgetron {
 
         recon_obj.recon_res_.data_.create(RO, E1, E2, 1, N, S, SLC);
 
-//        if (!debug_folder_full_path_.empty()) {
-//            std::stringstream os;
-//            os << "encoding_" << e;
-//            std::string suffix = os.str();
-//            gt_exporter_.export_array_complex(recon_bit.data_.data_, debug_folder_full_path_ + "data_src_" + suffix);
-//        }
+        if (!debug_folder_full_path_.empty()) {
+            std::stringstream os;
+            os << "encoding_" << e;
+            std::string suffix = os.str();
+            gt_exporter_.export_array_complex(recon_bit.data_.data_, debug_folder_full_path_ + "data_src_" + suffix);
+        }
 
         // compute aliased images
         data_recon_buf_.create(RO, E1, E2, dstCHA, N, S, SLC);
@@ -614,16 +640,16 @@ namespace Gadgetron {
             Gadgetron::scal((float) (grappaKernelCompensationFactor * snr_scaling_ratio), complex_im_recon_buf_);
 
             if (this->verbose.value()) GDEBUG_STREAM(
-                    "GenericReconCartesianGrappaGadget, grappaKernelCompensationFactor*snr_scaling_ratio : "
+                    "CustomGenericReconCartesianGrappaGadget, grappaKernelCompensationFactor*snr_scaling_ratio : "
                             << grappaKernelCompensationFactor * snr_scaling_ratio);
         }
 
-//        if (!debug_folder_full_path_.empty()) {
-//            std::stringstream os;
-//            os << "encoding_" << e;
-//            std::string suffix = os.str();
-//            gt_exporter_.export_array_complex(complex_im_recon_buf_, debug_folder_full_path_ + "aliasedIm_" + suffix);
-//        }
+        if (!debug_folder_full_path_.empty()) {
+            std::stringstream os;
+            os << "encoding_" << e;
+            std::string suffix = os.str();
+            gt_exporter_.export_array_complex(complex_im_recon_buf_, debug_folder_full_path_ + "aliasedIm_" + suffix);
+        }
 
         // unwrapping
 
@@ -640,38 +666,39 @@ namespace Gadgetron {
                 size_t n = ii - slc * N * S - s * N;
 
                 // combined channels
-                T *pIm = &(complex_im_recon_buf_(0, 0, 0, 0, n, s, slc));
+                T* pIm = &(complex_im_recon_buf_(0, 0, 0, 0, n, s, slc));
 
                 size_t usedN = n;
-                if (n >= ref_N) usedN = ref_N - 1;
+                if (n >= ref_N)
+                    usedN = ref_N - 1;
 
                 size_t usedS = s;
-                if (s >= ref_S) usedS = ref_S - 1;
+                if (s >= ref_S)
+                    usedS = ref_S - 1;
 
-                T *pUnmix = &(recon_obj.unmixing_coeff_(0, 0, 0, 0, usedN, usedS, slc));
+                T* pUnmix = &(recon_obj.unmixing_coeff_(0, 0, 0, 0, usedN, usedS, slc));
 
-                T *pRes = &(recon_obj.recon_res_.data_(0, 0, 0, 0, n, s, slc));
-                hoNDArray<std::complex<float> > res(RO, E1, E2, 1, pRes);
+                T* pRes = &(recon_obj.recon_res_.data_(0, 0, 0, 0, n, s, slc));
+                hoNDArray<std::complex<float>> res(RO, E1, E2, 1, pRes);
 
-                hoNDArray<std::complex<float> > unmixing(RO, E1, E2, unmixingCoeff_CHA, pUnmix);
-                hoNDArray<std::complex<float> > aliasedIm(RO, E1, E2,
-                                                          ((unmixingCoeff_CHA <= srcCHA) ? unmixingCoeff_CHA : srcCHA),
-                                                          1, pIm);
-                Gadgetron::apply_unmix_coeff_aliased_image_3D(aliasedIm, unmixing, res);
+                hoNDArray<std::complex<float>> unmixing(RO, E1, E2, unmixingCoeff_CHA, pUnmix);
+                hoNDArray<std::complex<float>> aliasedIm(
+                    RO, E1, E2, ((unmixingCoeff_CHA <= srcCHA) ? unmixingCoeff_CHA : srcCHA), 1, pIm);
+                Gadgetron::custom_apply_unmix_coeff_aliased_image_3D(aliasedIm, unmixing, res);
             }
         }
 
-//        if (!debug_folder_full_path_.empty()) {
-//            std::stringstream os;
-//            os << "encoding_" << e;
-//            std::string suffix = os.str();
-//            gt_exporter_.export_array_complex(recon_obj.recon_res_.data_,
-//                                              debug_folder_full_path_ + "unwrappedIm_" + suffix);
-//        }
+        if (!debug_folder_full_path_.empty()) {
+            std::stringstream os;
+            os << "encoding_" << e;
+            std::string suffix = os.str();
+            gt_exporter_.export_array_complex(recon_obj.recon_res_.data_,
+                                              debug_folder_full_path_ + "unwrappedIm_" + suffix);
+        }
 
     }
 
-    void GenericReconCartesianGrappaGadget::compute_snr_map(ReconObjType &recon_obj,
+    void CustomGenericReconCartesianGrappaGadget::compute_snr_map(ReconObjType &recon_obj,
                                                             hoNDArray<std::complex<float> > &snr_map) {
 
         typedef std::complex<float> T;
@@ -718,7 +745,135 @@ namespace Gadgetron {
 
     }
 
+    void CustomGenericReconCartesianGrappaGadget::save_complex_array_to_file_3d(hoNDArray<std::complex<float>> &array, int dim_1, int dim_2, int dim_3, const std::string& filepath) {
+        std::string output = "[";
+        for (int iii = 0; iii < dim_1; iii++) {
+            if (iii > 0) {
+                output += ", ";
+            }
+            output += "[";
+            for (int jjj = 0; jjj < dim_2; jjj++) {
+                if (jjj > 0) {
+                    output += ", ";
+                }
+                output += "[";
+                for (int kkk = 0; kkk < dim_3; kkk++) {
+                    if (kkk > 0) {
+                        output += ", ";
+                    }
+                    std::complex<float> val = array(iii, jjj, kkk);
+                    float rrr = val.real();
+                    float mmm = val.imag();
+                    std::stringstream stream_rrr;
+                    stream_rrr << std::fixed << std::setprecision(50) << rrr;
+                    std::string rrr2 = stream_rrr.str();
+
+                    std::stringstream stream_mmm;
+                    stream_mmm << std::fixed << std::setprecision(50) << mmm;
+                    std::string mmm2 = stream_mmm.str();
+
+                    output += "[";
+                    output += rrr2;
+                    output += ",";
+                    output += mmm2;
+                    output += "]";
+                }
+                output += "]";
+            }
+            output += "]";
+        }
+        output += "]";
+
+        std::ofstream out(filepath);
+        out << output;
+        out.close();
+    }
 
 
-    GADGET_FACTORY_DECLARE(GenericReconCartesianGrappaGadget)
+
+    GADGET_FACTORY_DECLARE(CustomGenericReconCartesianGrappaGadget)
 }
+
+
+//std::string output_src = "[";
+//for (int iii = 0; iii < ref_RO; iii++) {
+//if (iii > 0) {
+//output_src += ", ";
+//}
+//output_src += "[";
+//for (int jjj = 0; jjj < ref_E1; jjj++) {
+//if (jjj > 0) {
+//output_src += ", ";
+//}
+//output_src += "[";
+//for (int kkk = 0; kkk < srcCHA; kkk++) {
+//if (kkk > 0) {
+//output_src += ", ";
+//}
+//std::complex<float> val = acsSrc(iii, jjj, kkk);
+//float rrr = val.real();
+//float mmm = val.imag();
+//std::stringstream stream_rrr;
+//stream_rrr << std::fixed << std::setprecision(50) << rrr;
+//std::string rrr2 = stream_rrr.str();
+//
+//std::stringstream stream_mmm;
+//stream_mmm << std::fixed << std::setprecision(50) << rrr;
+//std::string mmm2 = stream_mmm.str();
+//
+//output_src += rrr2;
+//output_src += "+";
+//output_src += mmm2;
+//output_src += "j";
+//}
+//output_src += "]";
+//}
+//output_src += "]";
+//}
+//output_src += "]";
+//
+//std::ofstream out_src("/mnt/i/Data PhD/OneDrive - Imperial College London/PhD/In-house recon/test_save/grappa_dump_src.txt");
+//out_src << output_src;
+//out_src.close();
+//
+//
+//std::string output_dst = "[";
+//for (int iii = 0; iii < ref_RO; iii++) {
+//if (iii > 0) {
+//output_dst += ", ";
+//}
+//output_dst += "[";
+//for (int jjj = 0; jjj < ref_E1; jjj++) {
+//if (jjj > 0) {
+//output_dst += ", ";
+//}
+//output_dst += "[";
+//for (int kkk = 0; kkk < srcCHA; kkk++) {
+//if (kkk > 0) {
+//output_dst += ", ";
+//}
+//std::complex<float> val = acsSrc(iii, jjj, kkk);
+//float rrr = val.real();
+//float mmm = val.imag();
+//std::stringstream stream_rrr;
+//stream_rrr << std::fixed << std::setprecision(50) << rrr;
+//std::string rrr2 = stream_rrr.str();
+//
+//std::stringstream stream_mmm;
+//stream_mmm << std::fixed << std::setprecision(50) << rrr;
+//std::string mmm2 = stream_mmm.str();
+//
+//output_dst += rrr2;
+//output_dst += "+";
+//output_dst += mmm2;
+//output_dst += "j";
+//}
+//output_dst += "]";
+//}
+//output_dst += "]";
+//}
+//output_dst += "]";
+//
+//std::ofstream out_dst("/mnt/i/Data PhD/OneDrive - Imperial College London/PhD/In-house recon/test_save/grappa_dump_dst.txt");
+//out_dst << output_dst;
+//out_dst.close();

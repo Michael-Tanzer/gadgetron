@@ -43,7 +43,9 @@ namespace Gadgetron {
 
         calib_mode_.resize(NE, ISMRMRD_noacceleration);
 
-        KLT_.resize(NE);
+        data_KLT_.resize(NE);
+        sms_ref_KLT_.resize(NE);
+        ref_KLT_.resize(NE);
 
         for (size_t e = 0; e < h.encoding.size(); e++)
         {
@@ -127,29 +129,29 @@ namespace Gadgetron {
             }
 
             // whether it is needed to update coefficients
-            bool recompute_coeff = false;
-            if ( (KLT_[e].size()!=SLC) || update_eigen_channel_coefficients.value() )
+            bool recompute_coeff_data = false;
+            if ( (data_KLT_[e].size()!=SLC) || update_eigen_channel_coefficients.value() )
             {
-                recompute_coeff = true;
+                recompute_coeff_data = true;
             }
             else
             {
-                if(KLT_[e].size() == SLC)
+                if(data_KLT_[e].size() == SLC)
                 {
                     for (slc = 0; slc < SLC; slc++)
                     {
-                        if (KLT_[e][slc].size() != S) 
+                        if (data_KLT_[e][slc].size() != S)
                         {
-                            recompute_coeff = true;
+                            recompute_coeff_data = true;
                             break;
                         }
                         else
                         {
                             for (s = 0; s < S; s++)
                             {
-                                if (KLT_[e][slc][s].size() != N)
+                                if (data_KLT_[e][slc][s].size() != N)
                                 {
-                                    recompute_coeff = true;
+                                    recompute_coeff_data = true;
                                     break;
                                 }
                             }
@@ -158,22 +160,78 @@ namespace Gadgetron {
                 }
             }
 
-                bool average_N = average_all_ref_N.value();
-                bool average_S = average_all_ref_S.value();
-
-            if(recompute_coeff)
+            bool recompute_coeff_sms_ref = false;
+            if ( (sms_ref_KLT_[e].size()!=SLC) || update_eigen_channel_coefficients.value() )
             {
-                if(rbit.ref_)
+                recompute_coeff_sms_ref = true;
+            }
+            else
+            {
+                if(sms_ref_KLT_[e].size() == SLC)
                 {
-                    // use ref to compute coefficients
-                    Gadgetron::compute_eigen_channel_coefficients(rbit.ref_->data_, average_N, average_S,
-                        (calib_mode_[e] == Gadgetron::ISMRMRD_interleaved), N, S, upstream_coil_compression_thres.value(), upstream_coil_compression_num_modesKept.value(), KLT_[e]);
+                    for (slc = 0; slc < SLC; slc++)
+                    {
+                        if (sms_ref_KLT_[e][slc].size() != S)
+                        {
+                            recompute_coeff_sms_ref = true;
+                            break;
+                        }
+                        else
+                        {
+                            for (s = 0; s < S; s++)
+                            {
+                                if (sms_ref_KLT_[e][slc][s].size() != N)
+                                {
+                                    recompute_coeff_sms_ref = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
-                else
+            }
+
+            bool recompute_coeff_ref = false;
+            if ( (sms_ref_KLT_[e].size()!=SLC) || update_eigen_channel_coefficients.value() )
+            {
+                recompute_coeff_ref = true;
+            }
+            else
+            {
+                if(sms_ref_KLT_[e].size() == SLC)
                 {
-                    // use data to compute coefficients
-                    Gadgetron::compute_eigen_channel_coefficients(rbit.data_.data_, average_N, average_S,
-                        (calib_mode_[e] == Gadgetron::ISMRMRD_interleaved), N, S, upstream_coil_compression_thres.value(), upstream_coil_compression_num_modesKept.value(), KLT_[e]);
+                    for (slc = 0; slc < SLC; slc++)
+                    {
+                        if (sms_ref_KLT_[e][slc].size() != S)
+                        {
+                            recompute_coeff_ref = true;
+                            break;
+                        }
+                        else
+                        {
+                            for (s = 0; s < S; s++)
+                            {
+                                if (sms_ref_KLT_[e][slc][s].size() != N)
+                                {
+                                    recompute_coeff_ref = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            bool average_N = average_all_ref_N.value();
+            bool average_S = average_all_ref_S.value();
+
+
+            if (rbit.ref_) {
+                if (recompute_coeff_ref) {
+                    Gadgetron::compute_eigen_channel_coefficients(
+                        rbit.ref_->data_, average_N, average_S, (calib_mode_[e] == Gadgetron::ISMRMRD_interleaved), N,
+                        S, upstream_coil_compression_thres.value(), upstream_coil_compression_num_modesKept.value(),
+                        ref_KLT_[e]);
                 }
 
                 if (verbose.value())
@@ -186,18 +244,16 @@ namespace Gadgetron {
                         {
                             for (n = 0; n < N; n++)
                             {
-                                KLT_[e][slc][s][n].eigen_value(E);
+                                ref_KLT_[e][slc][s][n].eigen_value(E);
                             }
                         }
                     }
-                }
-                else
-                {
+                } else {
                     if(average_N && average_S)
                     {
                         for (slc = 0; slc < SLC; slc++)
                         {
-                            GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, SLC : " << slc << " - " << KLT_[e][slc][0][0].output_length() << " out of " << CHA);
+                            GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, SLC : " << slc << " - " << ref_KLT_[e][slc][0][0].output_length() << " out of " << CHA);
                         }
                     }
                     else if(average_N && !average_S)
@@ -206,7 +262,7 @@ namespace Gadgetron {
                         {
                             for (s = 0; s < S; s++)
                             {
-                                GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC S] : [" << slc << " " << s << "] - " << KLT_[e][slc][s][0].output_length() << " out of " << CHA);
+                                GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC S] : [" << slc << " " << s << "] - " << ref_KLT_[e][slc][s][0].output_length() << " out of " << CHA);
                             }
                         }
                     }
@@ -216,7 +272,7 @@ namespace Gadgetron {
                         {
                             for (n = 0; n < N; n++)
                             {
-                                GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC N] : [" << slc << " " << n << "] - " << KLT_[e][slc][0][n].output_length() << " out of " << CHA);
+                                GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC N] : [" << slc << " " << n << "] - " << ref_KLT_[e][slc][0][n].output_length() << " out of " << CHA);
                             }
                         }
                     }
@@ -228,39 +284,171 @@ namespace Gadgetron {
                             {
                                 for (n = 0; n < N; n++)
                                 {
-                                    GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC S N] : [" << slc << " " << s << " " << n << "] - " << KLT_[e][slc][s][n].output_length() << " out of " << CHA);
+                                    GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC S N] : [" << slc << " " << s << " " << n << "] - " << ref_KLT_[e][slc][s][n].output_length() << " out of " << CHA);
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            if (!debug_folder_full_path_.empty())
-            {
-                gt_exporter_.export_array_complex(rbit.data_.data_, debug_folder_full_path_ + "data_before_KLT" + os.str());
-            }
 
-            // apply KL coefficients
-            Gadgetron::apply_eigen_channel_coefficients(KLT_[e], rbit.data_.data_);
-
-            if (!debug_folder_full_path_.empty())
-            {
-                gt_exporter_.export_array_complex(rbit.data_.data_, debug_folder_full_path_ + "data_after_KLT" + os.str());
-            }
-
-            if (rbit.ref_)
-            {
-                if (!debug_folder_full_path_.empty())
-                {
+                if (!debug_folder_full_path_.empty()){
                     gt_exporter_.export_array_complex(rbit.ref_->data_, debug_folder_full_path_ + "ref_before_KLT" + os.str());
                 }
 
-                Gadgetron::apply_eigen_channel_coefficients(KLT_[e], rbit.ref_->data_);
+                Gadgetron::apply_eigen_channel_coefficients(ref_KLT_[e], rbit.ref_->data_);
 
-                if (!debug_folder_full_path_.empty())
-                {
+                if (!debug_folder_full_path_.empty()){
                     gt_exporter_.export_array_complex(rbit.ref_->data_, debug_folder_full_path_ + "ref_after_KLT" + os.str());
+                }
+            }
+
+            if (rbit.data_.data_.get_number_of_elements() > 0) {
+                if (recompute_coeff_data) {
+                    Gadgetron::compute_eigen_channel_coefficients(
+                        rbit.data_.data_, average_N, average_S, (calib_mode_[e] == Gadgetron::ISMRMRD_interleaved), N,
+                        S, upstream_coil_compression_thres.value(), upstream_coil_compression_num_modesKept.value(),
+                        data_KLT_[e]);
+                }
+
+                if (verbose.value()) {
+                    hoNDArray<std::complex<float>> E;
+
+                    for (slc = 0; slc < SLC; slc++) {
+                        for (s = 0; s < S; s++) {
+                            for (n = 0; n < N; n++) {
+                                data_KLT_[e][slc][s][n].eigen_value(E);
+                            }
+                        }
+                    }
+                } else {
+                    if(average_N && average_S)
+                    {
+                        for (slc = 0; slc < SLC; slc++)
+                        {
+                            GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, SLC : " << slc << " - " << data_KLT_[e][slc][0][0].output_length() << " out of " << CHA);
+                        }
+                    }
+                    else if(average_N && !average_S)
+                    {
+                        for (slc = 0; slc < SLC; slc++)
+                        {
+                            for (s = 0; s < S; s++)
+                            {
+                                GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC S] : [" << slc << " " << s << "] - " << data_KLT_[e][slc][s][0].output_length() << " out of " << CHA);
+                            }
+                        }
+                    }
+                    else if(!average_N && average_S)
+                    {
+                        for (slc = 0; slc < SLC; slc++)
+                        {
+                            for (n = 0; n < N; n++)
+                            {
+                                GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC N] : [" << slc << " " << n << "] - " << data_KLT_[e][slc][0][n].output_length() << " out of " << CHA);
+                            }
+                        }
+                    }
+                    else if(!average_N && !average_S)
+                    {
+                        for (slc = 0; slc < SLC; slc++)
+                        {
+                            for (s = 0; s < S; s++)
+                            {
+                                for (n = 0; n < N; n++)
+                                {
+                                    GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC S N] : [" << slc << " " << s << " " << n << "] - " << data_KLT_[e][slc][s][n].output_length() << " out of " << CHA);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!debug_folder_full_path_.empty()){
+                    gt_exporter_.export_array_complex(rbit.data_.data_, debug_folder_full_path_ + "data_before_KLT" + os.str());
+                }
+
+                // apply KL coefficients
+                Gadgetron::apply_eigen_channel_coefficients(data_KLT_[e], rbit.data_.data_);
+
+                if (!debug_folder_full_path_.empty()){
+                    gt_exporter_.export_array_complex(rbit.data_.data_, debug_folder_full_path_ + "data_after_KLT" + os.str());
+                }
+            }
+
+            if (rbit.sms_ref_) {
+                if (recompute_coeff_sms_ref) {
+                    Gadgetron::compute_eigen_channel_coefficients(
+                        rbit.sms_ref_->data_, average_N, average_S, (calib_mode_[e] == Gadgetron::ISMRMRD_interleaved),
+                        N, S, upstream_coil_compression_thres.value(), upstream_coil_compression_num_modesKept.value(),
+                        sms_ref_KLT_[e]);
+                }
+
+                if (verbose.value())
+                {
+                    hoNDArray< std::complex<float> > E;
+
+                    for (slc = 0; slc < SLC; slc++)
+                    {
+                        for (s = 0; s < S; s++)
+                        {
+                            for (n = 0; n < N; n++)
+                            {
+                                sms_ref_KLT_[e][slc][s][n].eigen_value(E);
+                            }
+                        }
+                    }
+                } else {
+                    if(average_N && average_S)
+                    {
+                        for (slc = 0; slc < SLC; slc++)
+                        {
+                            GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, SLC : " << slc << " - " << sms_ref_KLT_[e][slc][0][0].output_length() << " out of " << CHA);
+                        }
+                    }
+                    else if(average_N && !average_S)
+                    {
+                        for (slc = 0; slc < SLC; slc++)
+                        {
+                            for (s = 0; s < S; s++)
+                            {
+                                GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC S] : [" << slc << " " << s << "] - " << sms_ref_KLT_[e][slc][s][0].output_length() << " out of " << CHA);
+                            }
+                        }
+                    }
+                    else if(!average_N && average_S)
+                    {
+                        for (slc = 0; slc < SLC; slc++)
+                        {
+                            for (n = 0; n < N; n++)
+                            {
+                                GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC N] : [" << slc << " " << n << "] - " << sms_ref_KLT_[e][slc][0][n].output_length() << " out of " << CHA);
+                            }
+                        }
+                    }
+                    else if(!average_N && !average_S)
+                    {
+                        for (slc = 0; slc < SLC; slc++)
+                        {
+                            for (s = 0; s < S; s++)
+                            {
+                                for (n = 0; n < N; n++)
+                                {
+                                    GDEBUG_STREAM("GenericReconEigenChannelGadget - Number of modes kept, [SLC S N] : [" << slc << " " << s << " " << n << "] - " << sms_ref_KLT_[e][slc][s][n].output_length() << " out of " << CHA);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!debug_folder_full_path_.empty()){
+                    gt_exporter_.export_array_complex(rbit.sms_ref_->data_, debug_folder_full_path_ + "sms_ref_before_KLT" + os.str());
+                }
+
+                Gadgetron::apply_eigen_channel_coefficients(sms_ref_KLT_[e], rbit.sms_ref_->data_);
+
+                if (!debug_folder_full_path_.empty()){
+                    gt_exporter_.export_array_complex(rbit.sms_ref_->data_, debug_folder_full_path_ + "sms_ref_after_KLT" + os.str());
                 }
             }
         }

@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.10...3.12 FATAL_ERROR)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lz -lX11 -pthread")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lz -lX11 -pthread")
+
+#find_package(zlib REQUIRED)
+#include(zlib)
+
+
 if (${CMAKE_VERSION} VERSION_LESS 3.12)
     cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 else ()
@@ -49,7 +56,7 @@ else ()
     message(WARNING "Unsupported compiler!")
 endif ()
 
-#VERSIONING AND INSTALL PATHS
+        #VERSIONING AND INSTALL PATHS
 set(GADGETRON_VERSION_MAJOR 4)
 set(GADGETRON_VERSION_MINOR 1)
 set(GADGETRON_VERSION_PATCH 2)
@@ -197,7 +204,6 @@ set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 # necessary for Windows and RHEL <=6 systems
-
 if(WIN32)
     add_definitions( -DHAVE_SNPRINTF) #Python decides to overwrite snprintf if this is not defined, because ofcourse it does.
 endif()
@@ -205,7 +211,7 @@ endif()
 if (WIN32)
     find_package(Boost 1.71.0 COMPONENTS coroutine system date_time chrono program_options filesystem timer exception REQUIRED )
 else()
-    find_package(Boost 1.71.0 COMPONENTS coroutine system date_time program_options filesystem timer REQUIRED )
+    find_package(Boost 1.71.0 COMPONENTS coroutine system date_time program_options filesystem timer REQUIRED PATHS /data/installations/boost_1_77_0/stage/lib)
 endif()
 
 if (NOT DEFINED Boost_VERSION_STRING)
@@ -213,7 +219,7 @@ if (NOT DEFINED Boost_VERSION_STRING)
 endif()
 
 
-option(USE_CUDA "Build with CUDA support" On)
+option(USE_CUDA "Build with CUDA support" Off)
 
 if (USE_CUDA)
     find_package(CUDA_advanced)
@@ -249,6 +255,7 @@ if (CUDA_FOUND AND USE_CUDA)
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-gencode arch=compute_60,code=sm_60")
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-gencode arch=compute_61,code=sm_61")
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-gencode arch=compute_70,code=sm_70")
+        set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-gencode arch=compute_70,code=sm_72")
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-gencode arch=compute_75,code=sm_75")
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-gencode arch=compute_80,code=sm_80")
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-gencode arch=compute_86,code=sm_86")
@@ -315,6 +322,11 @@ else ()
 
     find_package(PkgConfig)
     pkg_check_modules(PC_lapacke lapacke)
+#    pkg_check_modules(LIBZIP REQUIRED libz)
+#    add_library(LIBZIP /data/installations/zlib-1.2.11)
+
+#    target_link_libraries(lzip lz)
+
 
     string(COMPARE EQUAL ${BLA_VENDOR} "OpenBLAS" USING_OPENBLAS)
     if (USING_OPENBLAS)
@@ -376,7 +388,7 @@ find_package(GLUT)
 find_package(Qt4 4.6)
 find_package(PLplot)
 
-option(BUILD_TESTING "Enable test building" On)
+option(BUILD_TESTING "Enable test building" Off)
 if (BUILD_TESTING)
     enable_testing()
     find_package(GTest)

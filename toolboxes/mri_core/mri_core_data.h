@@ -140,8 +140,7 @@ namespace Gadgetron
   public:
     IsmrmrdDataBuffered data_;
     Core::optional<IsmrmrdDataBuffered> ref_;
-
-
+    Core::optional<IsmrmrdDataBuffered> sms_ref_;
   };
 
   /**

@@ -604,7 +604,7 @@ namespace Gadgetron
 #ifdef _WIN32
             debugFolderPath = "c:/temp/gadgetron";
 #else
-            debugFolderPath = "/tmp/gadgetron";
+            debugFolderPath = "/data/temp/gadgetron";
 #endif // _WIN32
         }
         else

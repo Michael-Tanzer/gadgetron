@@ -66,7 +66,9 @@ namespace Gadgetron {
         // --------------------------------------------------
 
         // store the KLT coefficients for N, S, SLC at every encoding space
-        std::vector< std::vector< std::vector< std::vector< KLTType > > > > KLT_;
+        std::vector< std::vector< std::vector< std::vector< KLTType > > > > data_KLT_;
+        std::vector< std::vector< std::vector< std::vector< KLTType > > > > ref_KLT_;
+        std::vector< std::vector< std::vector< std::vector< KLTType > > > > sms_ref_KLT_;
 
         // --------------------------------------------------
         // gadget functions
