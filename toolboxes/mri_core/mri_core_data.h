@@ -1,15 +1,15 @@
 #ifndef MRI_CORE_DATA_H
 #define MRI_CORE_DATA_H
 
-#include "ismrmrd/ismrmrd.h"
-#include "ismrmrd/waveform.h"
-#include "ismrmrd/meta.h"
-#include <vector>
-#include <set>
-#include "hoNDArray.h"
 #include "Types.h"
+#include "hoNDArray.h"
+#include "ismrmrd/ismrmrd.h"
+#include "ismrmrd/meta.h"
+#include "ismrmrd/waveform.h"
+#include <any>
 #include <io/adapt_struct.h>
-
+#include <set>
+#include <vector>
 
 namespace Gadgetron 
 {
@@ -141,6 +141,7 @@ namespace Gadgetron
     IsmrmrdDataBuffered data_;
     Core::optional<IsmrmrdDataBuffered> ref_;
     Core::optional<IsmrmrdDataBuffered> sms_ref_;
+    std::map<std::string, std::any> additional_data;
   };
 
   /**

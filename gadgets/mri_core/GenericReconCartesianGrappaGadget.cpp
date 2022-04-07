@@ -271,15 +271,22 @@ namespace Gadgetron {
                 if (perform_timing.value()) { gt_timer_.stop(); }
             }
 
+            recon_bit_->rbit_[e].additional_data["grappa_recon_obj"] = recon_obj_[e];
             recon_obj_[e].recon_res_.data_.clear();
             recon_obj_[e].gfactor_.clear();
             recon_obj_[e].recon_res_.headers_.clear();
             recon_obj_[e].recon_res_.meta_.clear();
         }
 
-        m1->release();
+//        m1->release();
 
         if (perform_timing.value()) { gt_timer_local_.stop(); }
+
+        if (this->next()->putq(m1) < 0)
+        {
+            GERROR_STREAM("Put IsmrmrdReconData to Q failed ... ");
+            return GADGET_FAIL;
+        }
 
         return GADGET_OK;
     }
